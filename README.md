@@ -4,6 +4,13 @@ a simple session handler for Automerge applications
 
 ![Screenshot](Demo-Screenshot.png)
 
+
+
+(documentation follows)
+
+
+
+
 ## Build Instructions ##
 
 You may easily build this package yourself.
