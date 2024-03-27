@@ -1,0 +1,42 @@
+{
+  "name": "automerge-session-handler",
+  "version": "0.0.1",
+  "description": "a simple session handler for Automerge applications",
+  "type": "module",
+  "source": "src/automerge-session-handler.ts",
+  "exports": {
+    "types": "./dist/automerge-session-handler.d.ts",
+    "require": "./dist/automerge-session-handler.cjs",
+    "default": "./dist/automerge-session-handler.modern.js"
+  },
+  "main": "./dist/automerge-session-handler.cjs",
+  "module": "./dist/automerge-session-handler.esm.js",
+  "svelte": "./dist/automerge-session-handler.esm.js",
+  "umd:main": "./dist/automerge-session-handler.umd.js",
+  "types": "./dist/automerge-session-handler.d.ts",
+  "scripts": {
+    "build": "rimraf dist && microbundle --globals JIL=javascript-interface-library && rm -r dist/src",
+    "agadoo": "agadoo",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rozek/automerge-session-handler.git"
+  },
+  "keywords": [
+    "javascript",
+    "typescript"
+  ],
+  "author": "Andreas Rozek <a.rozek@gmx.de> (https://www.rozek.de/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rozek/automerge-session-handler/issues"
+  },
+  "homepage": "https://github.com/rozek/automerge-session-handler#readme",
+  "devDependencies": {
+    "agadoo": "^2.0.0",
+    "javascript-interface-library": "^1.0.5",
+    "microbundle": "^0.15.1",
+    "rimraf": "^3.0.2"
+  }
+}
