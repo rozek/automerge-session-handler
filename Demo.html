@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en" charset="utf-8" style="width:100%">
+ <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+  <meta name="viewport" content="minimal-ui, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+
+  <meta name="apple-mobile-web-app-capable"          content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+  <meta name="format-detection"                      content="telephone=no">
+
+  <style name="mobile-prologue">
+    html {
+      text-size-adjust: 100%;
+      -moz-text-size-adjust: 100%;
+      -webkit-text-size-adjust: 100%;
+      -o-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+
+    html, body {
+      width:99%; height:99%;
+    }
+
+    html { overflow:hidden scroll }
+  </style>
+
+  <style name="blue-textured-background">
+    html, body {
+      background-color: #627AC6;
+      background-image: url(/common/BinaryTexture.png);
+      background-repeat:repeat;
+
+      font-family:'Source Sans Pro','Helvetica Neue',Helvetica,Arial,sans-serif;
+      font-size:14px; font-weight:400; color:white;
+      line-height:150%;
+    }
+
+    * {
+      -moz-box-sizing:border-box; -webkit-box-sizing:border-box; box-sizing:border-box;
+    }
+  </style>
+
+  <script name="clear-console">
+    if (typeof console.clear === 'function') {
+      console.clear()
+    }
+  </script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "javascript-interface-library": "https://rozek.github.io/javascript-interface-library/dist/javascript-interface-library.esm.js",
+      "JIL":                          "https://rozek.github.io/javascript-interface-library/dist/javascript-interface-library.esm.js",
+
+      "protoux": "https://rozek.github.io/protoux/dist/protoux.modern.js",
+
+      "preact":     "https://rozek.github.io/htm/preact/standalone.module.js",
+      "htm/preact": "https://rozek.github.io/htm/preact/standalone.module.js",
+
+      "hyperactiv":      "https://rozek.github.io/hyperactiv/dist/hyperactiv.esm.js",
+      "rozek/hyperactiv":"https://rozek.github.io/hyperactiv/dist/hyperactiv.esm.js",
+
+      "automerge-session-handler": "https://rozek.github.io/automerge-session-handler/dist/automerge-session-handler.modern.js",
+      "localSessionIndex":         "https://rozek.github.io/local-session-index/dist/localSessionIndex.modern.js"
+    }
+  }
+  </script>
+
+  <script type="module" src="https://rozek.github.io/automerge-bundle/dist/automerge-bundle.js"></script>
+ </head>
+ <body>
+
+  <div id="Container" style="
+    display:block; position:relative;
+    left:20px; top:20px; width:640px; height:480px;
+  "></div>
+
+  <script type="module">
+  import { ProtoUX }           from 'protoux'
+  import { AutomergeSession }  from 'automerge-session-handler'
+  import { localSessionIndex } from 'localSessionIndex'
+
+  const SessionIndex = new localSessionIndex()
+
+/**** Handler for Session State Changes ****/
+
+  function handleStateChange (SessionState) {
+    console.log('SessionState',SessionState)
+
+    switch (SessionState) {
+      case 'unprepared': PUX.openScreen('StartScreen'); break
+      case 'prepared':   PUX.openScreen('SessionChoice'); break
+      case 'opening':    PUX.openScreen('SessionOpening'); break
+      case 'open':
+        let SessionName = PUX.observed.SessionName
+        if (SessionName.trim() !== '') {
+          PUX.observed.SessionURL = Session.URL
+
+          SessionIndex.set(SessionName,Session.URL)
+          SessionIndex.preserve()
+          PUX.observed.SessionNameList = SessionIndex.NameList
+        }
+        PUX.openScreen('SessionOpen')
+        break
+      case 'closed':    PUX.openScreen('SessionClosed'); break
+      case 'cancelled': switch (Session.CancellationReason) {
+        case 'Automerge Absence':   PUX.openScreen('AutomergeAbsence'); break
+        case 'opening timeout':     PUX.openScreen('OpeningTimeout'); break
+        case 'session deleted':     PUX.openScreen('SessionDeleted'); break
+        case 'session unavailable': PUX.openScreen('SessionUnavailable'); break
+        default:
+      }
+    }
+  }
+
+/**** Handler for incoming Updates and Broadcasts - not needed here ****/
+
+  function handleUpdate    (Event)   { /* not in this demo */ }
+  function handleBroadcast (Message) { /* not in this demo */ }
+
+/**** User Commands ****/
+
+  function resetSession () {
+    Session = new AutomergeSession()
+      Session.onStateChange(handleStateChange)
+      Session.onUpdate(handleUpdate)
+      Session.onBroadcast(handleBroadcast)
+
+      Object.assign(PUX.observed,{     // simplify reopening of previous session
+        NameOfSessionToCreate:'',
+        NameOfSessionToOpen:  PUX.observed.SessionName,
+        URLofSessionToOpen:   PUX.observed.SessionURL,
+      })
+    Session.prepare()
+  }
+
+  function prepareSession () {
+    isValidAutomergeUrl = window.automerge.isValidAutomergeUrl // make mock real
+
+    SessionIndex.restore()
+      if (SessionIndex.NameList.length === 0) {
+        SessionIndex.import(`{ "Test Session":"4Fs69aEHJBiPJh5zPcUQ8d6fwbEM" }`)
+      }
+      PUX.observed.SessionNameList   = SessionIndex.NameList
+      PUX.observed.chosenSessionName = SessionIndex.NameList[0]
+    Session.prepare()
+  }
+
+  function createSession () {
+    PUX.observed.SessionName = PUX.observed.NameOfSessionToCreate
+    Session.create()
+  }
+
+  function openSession () {
+    PUX.observed.SessionName = PUX.observed.NameOfSessionToOpen
+    PUX.observed.SessionURL  = PUX.observed.URLofSessionToOpen
+
+    Session.open(PUX.observed.SessionURL)
+  }
+
+  function reopenSession () {
+    PUX.observed.SessionName = PUX.observed.chosenSessionName
+    PUX.observed.SessionURL  = SessionIndex.get(PUX.observed.SessionName)
+
+    Session.open(PUX.observed.SessionURL)
+  }
+  function cancelSession () { Session.cancel(); resetSession() }
+  function closeSession ()  { Session.close() }
+
+/**** it's ok to prepare a session even before "automerge" is available ****/
+
+  let Session = new AutomergeSession()       // this is just the initial session
+    Session.onStateChange(handleStateChange)
+    Session.onUpdate(handleUpdate)
+    Session.onBroadcast(handleBroadcast)
+//Session.prepare()                        // but it must not yet been prepared!
+
+/**** since "Session" exists, a UI for it can already been drawn ****/
+
+  let isValidAutomergeUrl = () => false // just an temporary mock
+
+  let PUX = new ProtoUX()
+    PUX.ImageFolder = '/WebWorld/images/'
+
+    PUX.Style     = `  #PUX_0 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_5 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_10 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_25 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_31 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_37 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_44 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_49 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_56 {
+    background-image:url("/images/BinaryTexture_white.jpg"); 
+  }
+
+  #PUX_1 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_2 {
+    font-size:20px; 
+  }
+
+  #PUX_4 {
+    border-radius:3px; 
+  }
+
+  #PUX_6 {
+    font-size:20px; 
+  }
+
+  #PUX_7 {
+    line-height:1.4; 
+  }
+
+  #PUX_8 {
+    line-height:1.4; 
+  }
+
+  #PUX_9 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_11 {
+    padding:6px 0px 0px 0px;
+    font-weight:bold; 
+  }
+
+  #PUX_14 {
+    background-color:rgba(255, 255, 255, 0); 
+    border-style:solid; border-width:1px 0px 0px 0px; border-color:#dddddd; 
+    border-radius:0px; 
+  }
+
+  #PUX_15 {
+    font-size:20px; 
+  }
+
+  #PUX_16 {
+    padding:6px 0px 0px 0px;
+    font-weight:bold; 
+    line-height:1.4; 
+  }
+
+  #PUX_19 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_20 {
+    background-color:rgba(255, 255, 255, 0); 
+    border-style:solid; border-width:1px 0px 0px 0px; border-color:#dddddd; 
+    border-radius:0px; 
+  }
+
+  #PUX_21 {
+    padding:6px 0px 0px 0px;
+    font-weight:bold; 
+  }
+
+  #PUX_26 {
+    font-size:20px; 
+  }
+
+  #PUX_27 {
+    line-height:1.4; 
+  }
+
+  #PUX_28 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_30 {
+    line-height:1.4; 
+  }
+
+  #PUX_32 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_33 {
+    font-size:20px; 
+  }
+
+  #PUX_34 {
+    line-height:1.4; 
+  }
+
+  #PUX_36 {
+    line-height:1.4; 
+  }
+
+  #PUX_38 {
+    font-size:20px; 
+  }
+
+  #PUX_39 {
+    line-height:1.4; 
+  }
+
+  #PUX_40 {
+    line-height:1.4; 
+  }
+
+  #PUX_41 {
+    line-height:1.4; 
+  }
+
+  #PUX_43 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_45 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_46 {
+    font-size:20px; 
+  }
+
+  #PUX_48 {
+    border-radius:3px; 
+  }
+
+  #PUX_50 {
+    font-size:20px; 
+  }
+
+  #PUX_51 {
+    line-height:1.4; 
+  }
+
+  #PUX_52 {
+    line-height:1.4; 
+  }
+
+  #PUX_53 {
+    line-height:1.4; 
+  }
+
+  #PUX_54 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  #PUX_57 {
+    font-size:20px; 
+  }
+
+  #PUX_58 {
+    line-height:1.4; 
+  }
+
+  #PUX_59 {
+    line-height:1.4; 
+  }
+
+  #PUX_61 {
+    border-width:1px; border-color:#dddddd; 
+    border-radius:4px; 
+    box-shadow:0px 0px 20px 0px rgba(0, 0, 0, 0.3);
+  }
+
+`
+    PUX.ScreenSet = {
+      'StartScreen': {
+        Name:'StartScreen', Id:'PUX_0',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":160,"Width":341,"Height":91,"Classes":"Box","Id":"PUX_1"},
+          {"Type":"Label","x":180,"y":180,"Width":181,"Height":31,"Classes":"","Value":"Loading Automerge","Id":"PUX_2"},
+          {"Type":"Label","x":180,"y":211,"Width":181,"Height":24,"Classes":"","Value":"please wait...","Id":"PUX_3"},
+          {"Type":"Button","Name":"AbortButton","x":391,"y":191,"Width":81,"Height":28,"Classes":"vertically-centered Button","Value":"Abort","Id":"PUX_4"},
+        ],
+      },
+      'AutomergeAbsence': {
+        Name:'AutomergeAbsence', Id:'PUX_5',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":120,"Width":341,"Height":181,"Classes":"Box","Id":"PUX_9"},
+          {"Type":"Label","x":180,"y":140,"Width":260,"Height":31,"Classes":"","Value":"Automerge is Missing","Id":"PUX_6"},
+          {"Type":"Label","x":180,"y":180,"Width":280,"Height":40,"Classes":"","Value":"Automerge could not be loaded - please, contact the developer to find a solution.","Id":"PUX_7"},
+          {"Type":"Label","x":180,"y":240,"Width":280,"Height":40,"Classes":"","Value":"Without Automerge, this application can not be used.","Id":"PUX_8"},
+        ],
+      },
+      'SessionChoice': {
+        Name:'SessionChoice', Id:'PUX_10',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":40,"Width":341,"Height":370,"Classes":"Box","Id":"PUX_19"},
+          {"Type":"Label","x":170,"y":60,"Width":291,"Height":31,"Classes":"","Value":"Choose a Session","Id":"PUX_15"},
+          {"Type":"Label","x":170,"y":101,"Width":191,"Height":31,"Classes":"","Value":"Create new Session","Id":"PUX_16"},
+          {"Type":"Button","Name":"CreateButton","x":380,"y":101,"Width":91,"Height":28,"Classes":"vertically-centered Button","Value":"Create","Id":"PUX_17"},
+          {"Type":"Label","x":170,"y":191,"Width":191,"Height":31,"Classes":"","Value":"Open Existing Session","Id":"PUX_11"},
+          {"Type":"Button","Name":"OpenButton","x":380,"y":191,"Width":91,"Height":28,"Classes":"vertically-centered Button","Value":"Open","Id":"PUX_13"},
+          {"Type":"URLInput","Name":"URLInput","x":170,"y":229,"Width":301,"Height":31,"Classes":"URLInput","Placeholder":"Enter Session URL","Value":"","Id":"PUX_12"},
+          {"Type":"Label","x":170,"y":321,"Width":191,"Height":31,"Classes":"","Value":"Reopen closed Session","Id":"PUX_21"},
+          {"Type":"Button","Name":"ReopenButton","x":380,"y":321,"Width":91,"Height":28,"Classes":"vertically-centered Button","Value":"Reopen","Id":"PUX_22"},
+          {"Type":"Box","x":170,"y":180,"Width":301,"Height":11,"Classes":"","Id":"PUX_14"},
+          {"Type":"Box","x":170,"y":310,"Width":301,"Height":11,"Classes":"","Id":"PUX_20"},
+          {"Type":"TextlineInput","Name":"CreatedNameInput","x":170,"y":140,"Width":301,"Height":28,"Classes":"TextlineInput","Placeholder":"Enter optional Name for the new Session","Value":"","Id":"PUX_18"},
+          {"Type":"DropDown","Name":"SessionChoice","x":170,"y":360,"Width":301,"Height":28,"Classes":"DropDown","Options":["Test Session"],"Id":"PUX_23"},
+          {"Type":"TextlineInput","Name":"OpenedNameInput","x":170,"y":270,"Width":301,"Height":28,"Classes":"TextlineInput 1","Placeholder":"Enter optional Session Name","Value":"","Id":"PUX_24"},
+        ],
+      },
+      'OpeningTimeout': {
+        Name:'OpeningTimeout', Id:'PUX_25',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":101,"Width":341,"Height":220,"Classes":"Box","Id":"PUX_28"},
+          {"Type":"Label","x":180,"y":119,"Width":260,"Height":31,"Classes":"","Value":"Session Timeout","Id":"PUX_26"},
+          {"Type":"Label","x":180,"y":160,"Width":280,"Height":40,"Classes":"","Value":"The chosen session could not be opened within the given time limit.","Id":"PUX_27"},
+          {"Type":"Button","Name":"BackButton","x":270,"y":270,"Width":101,"Height":31,"Classes":"vertically-centered Button","Value":"Back","Id":"PUX_29"},
+          {"Type":"Label","x":180,"y":211,"Width":280,"Height":51,"Classes":"","Value":"Please, try again later, choose a different session or create a new one.","Id":"PUX_30"},
+        ],
+      },
+      'SessionUnavailable': {
+        Name:'SessionUnavailable', Id:'PUX_31',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":101,"Width":341,"Height":220,"Classes":"Box","Id":"PUX_32"},
+          {"Type":"Label","x":180,"y":120,"Width":260,"Height":31,"Classes":"","Value":"Session Unavailable","Id":"PUX_33"},
+          {"Type":"Label","x":180,"y":160,"Width":280,"Height":40,"Classes":"","Value":"The chosen session does not seem to be available.","Id":"PUX_34"},
+          {"Type":"Button","Name":"BackButton","x":270,"y":270,"Width":101,"Height":31,"Classes":"vertically-centered Button","Value":"Back","Id":"PUX_35"},
+          {"Type":"Label","x":180,"y":211,"Width":280,"Height":51,"Classes":"","Value":"Please, try again later, choose a different session or create a new one.","Id":"PUX_36"},
+        ],
+      },
+      'SessionDeleted': {
+        Name:'SessionDeleted', Id:'PUX_37',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":101,"Width":341,"Height":191,"Classes":"Box","Id":"PUX_43"},
+          {"Type":"Label","x":179,"y":120,"Width":260,"Height":31,"Classes":"","Value":"Session Deleted","Id":"PUX_38"},
+          {"Type":"Label","Name":"MessageLabel","x":179,"y":160,"Width":280,"Height":31,"Classes":"","Value":"The chosen session was deleted.","Id":"PUX_39"},
+          {"Type":"Button","Name":"BackButton","x":269,"y":240,"Width":101,"Height":31,"Classes":"vertically-centered Button","Value":"Back","Id":"PUX_42"},
+          {"Type":"Label","x":179,"y":191,"Width":280,"Height":51,"Classes":"","Value":"Please, choose a different session or create a new one.","Id":"PUX_41"},
+          {"Type":"Label","x":179,"y":160,"Width":280,"Height":31,"Classes":"","Value":"The chosen session was deleted.","Id":"PUX_40"},
+        ],
+      },
+      'SessionOpening': {
+        Name:'SessionOpening', Id:'PUX_44',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":160,"Width":341,"Height":91,"Classes":"Box","Id":"PUX_45"},
+          {"Type":"Label","x":180,"y":180,"Width":181,"Height":31,"Classes":"","Value":"Opening Session","Id":"PUX_46"},
+          {"Type":"Label","x":180,"y":211,"Width":181,"Height":24,"Classes":"","Value":"please wait...","Id":"PUX_47"},
+          {"Type":"Button","Name":"AbortButton","x":390,"y":191,"Width":81,"Height":28,"Classes":"vertically-centered Button","Value":"Abort","Id":"PUX_48"},
+        ],
+      },
+      'SessionOpen': {
+        Name:'SessionOpen', Id:'PUX_49',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":101,"Width":341,"Height":251,"Classes":"Box","Id":"PUX_54"},
+          {"Type":"Label","x":179,"y":119,"Width":260,"Height":31,"Classes":"","Value":"Session is Open","Id":"PUX_50"},
+          {"Type":"Label","x":179,"y":160,"Width":280,"Height":31,"Classes":"","Value":"The chosen session is now open.","Id":"PUX_51"},
+          {"Type":"Button","Name":"CloseButton","x":269,"y":301,"Width":101,"Height":31,"Classes":"vertically-centered Button","Value":"Close","Id":"PUX_55"},
+          {"Type":"Label","x":179,"y":191,"Width":280,"Height":51,"Classes":"","Value":"Normally, your application would start now and run in the context of this session.","Id":"PUX_52"},
+          {"Type":"Label","x":179,"y":240,"Width":280,"Height":51,"Classes":"","Value":"For this little demonstrator, however, this situation marks the end of its journey.","Id":"PUX_53"},
+        ],
+      },
+      'SessionClosed': {
+        Name:'SessionClosed', Id:'PUX_56',
+        Width:640, Height:480,
+        WidgetList:[
+          {"Type":"Box","x":150,"y":101,"Width":341,"Height":211,"Classes":"Box","Id":"PUX_61"},
+          {"Type":"Label","x":180,"y":119,"Width":260,"Height":31,"Classes":"","Value":"Session Closed","Id":"PUX_57"},
+          {"Type":"Button","Name":"BackButton","x":270,"y":260,"Width":101,"Height":31,"Classes":"vertically-centered Button","Value":"Back","Id":"PUX_60"},
+          {"Type":"Label","x":180,"y":191,"Width":280,"Height":71,"Classes":"","Value":"If you like, you may now start over and reopen this session, choose a different or create a new one.","Id":"PUX_59"},
+          {"Type":"Label","x":180,"y":160,"Width":280,"Height":31,"Classes":"","Value":"The session was closed.","Id":"PUX_58"},
+        ],
+      },
+    }
+      Object.assign(PUX.observed,{
+        NameOfSessionToCreate:'', NameOfSessionToOpen:'', URLofSessionToOpen:'',
+        SessionName:'', SessionURL: '',
+        SessionNameList:[], chosenSessionName:'',
+      })
+
+      const updatedFrom = PUX.updatedFrom // simplifies the following code a bit
+      PUX.configure({
+        StartScreen: {
+          AbortButton: {
+            onClick: () => Session.cancelDueTo('Automerge Absence'),
+          }
+        },
+        AutomergeAbsence: { /* nothing to configure */ },
+        SessionChoice: {
+          CreateButton: { onClick:createSession },
+          CreatedNameInput: {
+            Value:updatedFrom(() => PUX.observed.NameOfSessionToCreate),
+            onInput:(Event) => PUX.observed.NameOfSessionToCreate = Event.target.value,
+          },
+          OpenButton: {
+            disabled:updatedFrom(() => ! isValidAutomergeUrl(PUX.observed.URLofSessionToOpen)),
+            onClick:openSession,
+          },
+          OpenedNameInput: {
+            Value:updatedFrom(() => PUX.observed.NameOfSessionToOpen),
+            onInput:(Event) => PUX.observed.NameOfSessionToOpen = Event.target.value,
+          },
+          URLInput: {
+            Value:updatedFrom(() => PUX.observed.URLofSessionToOpen),
+            onInput:(Event) => PUX.observed.URLofSessionToOpen = Event.target.value,
+          },
+          ReopenButton: {
+            disabled:updatedFrom(() => (PUX.observed.chosenSessionName == null)),
+            onClick:reopenSession,
+          },
+          SessionChoice: {
+            Options:updatedFrom(() => PUX.observed.SessionNameList),
+            Value:  updatedFrom(() => PUX.observed.chosenSessionName),
+            onInput:(Event) => PUX.observed.chosenSessionName = Event.target.value,
+          },
+        },
+        SessionOpening: { AbortButton: { onClick:cancelSession } },
+        SessionOpen:    { CloseButton: { onClick:closeSession } },
+        SessionClosed:  { BackButton:  { onClick:resetSession } },
+
+        OpeningTimeout:     { BackButton: { onClick:resetSession } },
+        SessionUnavailable: { BackButton: { onClick:resetSession } },
+        SessionDeleted:     { BackButton: { onClick:resetSession } },
+      })
+    PUX.startWithScreen('StartScreen')
+  PUX.renderInto(document.getElementById('Container'))
+
+/**** but to actually "prepare" and proceed, "automerge" must be available ****/
+
+// @ts-ignore TS2339 allow "window.automerge"
+  if (window.automerge == null) {
+    document.addEventListener('automerge',prepareSession)
+  } else {
+    prepareSession()
+  }
+  </script>
