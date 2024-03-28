@@ -81,6 +81,8 @@
   import { AutomergeSession }  from 'automerge-session-handler'
   import { localSessionIndex } from 'localSessionIndex'
 
+  const ImageFolder = '/common/'
+
   const SessionIndex = new localSessionIndex()
 
 /**** Handler for Session State Changes ****/
@@ -181,7 +183,7 @@
   let isValidAutomergeUrl = () => false // just an temporary mock
 
   let PUX = new ProtoUX()
-    PUX.ImageFolder = '/WebWorld/images/'
+    PUX.ImageFolder = ImageFolder
 
     PUX.Style     = `  #PUX_0 {
     background-image:url("/images/BinaryTexture_white.jpg"); 
