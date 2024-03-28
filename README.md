@@ -1,6 +1,6 @@
 # automerge-session-handler #
 
-a simple session handler for Automerge applications ([live demo](http://rozek.de/www/public/www.rozek.de/automerge/automerge-session-handler.html))
+a simple session handler for Automerge applications ([live demo](https://www.rozek.de/automerge/automerge-session-handler.html))
 
 ![Screenshot](Demo-Screenshot.png)
 
