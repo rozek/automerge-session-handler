@@ -1,21 +1,22 @@
 {
   "name": "automerge-session-handler",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a simple session handler for Automerge applications",
-  "type": "module",
-  "source": "src/automerge-session-handler.ts",
-  "exports": {
-    "types": "./dist/automerge-session-handler.d.ts",
-    "require": "./dist/automerge-session-handler.cjs",
-    "default": "./dist/automerge-session-handler.modern.js"
-  },
-  "main": "./dist/automerge-session-handler.cjs",
+  "source": "./src/automerge-session-handler.ts",
+  "main":   "./dist/automerge-session-handler.umd.js",
+  "browser":"./dist/automerge-session-handler.umd.js",
   "module": "./dist/automerge-session-handler.esm.js",
   "svelte": "./dist/automerge-session-handler.esm.js",
-  "umd:main": "./dist/automerge-session-handler.umd.js",
-  "types": "./dist/automerge-session-handler.d.ts",
+  "types":  "./dist/automerge-session-handler.d.ts",
+  "exports": {
+    "require":"./dist/automerge-session-handler.umd.js",
+    "browser":"./dist/automerge-session-handler.umd.js",
+    "import": "./dist/automerge-session-handler.esm.js",
+    "svelte": "./dist/automerge-session-handler.esm.js",
+    "types":  "./dist/automerge-session-handler.d.ts"
+  },
   "scripts": {
-    "build": "rimraf dist && microbundle --globals JIL=javascript-interface-library && rm -r dist/src",
+    "build": "rimraf dist && microbundle --globals JIL=javascript-interface-library && rimraf dist/src",
     "agadoo": "agadoo",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
