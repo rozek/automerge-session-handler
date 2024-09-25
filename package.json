@@ -16,7 +16,7 @@
     "types":  "./dist/automerge-session-handler.d.ts"
   },
   "scripts": {
-    "build": "rimraf dist && microbundle --globals JIL=javascript-interface-library && rimraf dist/src",
+    "build": "rimraf dist && microbundle --globals JIL=javascript-interface-library && rimraf dist/src && rm dist/automerge-session-handler.js*",
     "agadoo": "agadoo",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
